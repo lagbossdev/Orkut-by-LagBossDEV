@@ -10,7 +10,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Trebuchet+MS:wght@400;700&display=swap" rel="stylesheet">
     
-    <!-- SCRIPT DO GOOGLE -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 
     <script>
@@ -33,21 +32,105 @@
             }
         }
 
-        // FUNÇÃO QUE RECEBE OS DADOS DO LOGIN
+        let currentUser = {};
+
         function handleCredentialResponse(response) {
-            console.log("Login OK!");
-            
-            // Decodifica os dados
             const payload = JSON.parse(atob(response.credential.split('.')[1]));
+            currentUser = payload;
             
-            // Esconde login e mostra o conteúdo
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('mainContent').style.display = 'block';
             
-            // Coloca nome e foto do Google no perfil
+            // Atualiza dados na barra lateral
             document.getElementById('profileName').innerText = payload.name;
             document.getElementById('profilePicture').src = payload.picture;
+            document.getElementById('profileEmail').innerText = payload.email;
         }
+
+        // --- SISTEMA DE POSTAGEM ---
+        function togglePostBox() {
+            const box = document.getElementById('postBox');
+            box.classList.toggle('hidden');
+        }
+
+        function publishPost() {
+            const text = document.getElementById('postText').value;
+            const imageUrl = document.getElementById('postImageUrl').value;
+            const videoUrl = document.getElementById('postVideoUrl').value;
+
+            if(!text && !imageUrl && !videoUrl) {
+                alert('Escreva algo ou adicione uma mídia!');
+                return;
+            }
+
+            const feed = document.getElementById('feedContainer');
+            const postId = 'post-' + Date.now();
+
+            const postElement = document.createElement('article');
+            postElement.className = 'bg-white border rounded-lg shadow-sm post-item';
+            postElement.innerHTML = `
+                <div class="p-3 flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <img src="${currentUser.picture}" class="w-9 h-9 rounded-full object-cover" alt="User">
+                        <span class="font-semibold text-sm">${currentUser.given_name || currentUser.name}</span>
+                    </div>
+                    <i class="fa fa-ellipsis-h cursor-pointer"></i>
+                </div>
+                <div class="px-3 pb-3">
+                    <p class="text-gray-800 whitespace-pre-wrap">${text}</p>
+                </div>
+                ${imageUrl ? `<div class="w-full"><img src="${imageUrl}" class="w-full object-cover" alt="Post image"></div>` : ''}
+                ${videoUrl ? `<div class="w-full"><iframe class="w-full h-64" src="${videoUrl.replace('watch?v=', 'embed/')}" frameborder="0" allowfullscreen></iframe></div>` : ''}
+                <div class="p-3">
+                    <div class="flex justify-between items-center mb-2">
+                        <div class="flex space-x-4">
+                            <i class="fa fa-heart-o text-2xl cursor-pointer heart-btn heart-animation"></i>
+                            <i class="fa fa-comment-o text-2xl cursor-pointer comment-btn"></i>
+                        </div>
+                        <i class="fa fa-bookmark-o text-2xl cursor-pointer"></i>
+                    </div>
+                    <p class="text-gray-400 text-xs mt-2 uppercase">Agora mesmo</p>
+                </div>
+            `;
+
+            feed.insertBefore(postElement, feed.firstChild);
+            
+            // Limpa campos
+            document.getElementById('postText').value = '';
+            document.getElementById('postImageUrl').value = '';
+            document.getElementById('postVideoUrl').value = '';
+            document.getElementById('postBox').classList.add('hidden');
+        }
+
+        function openProfile() {
+            document.getElementById('feedView').style.display = 'none';
+            document.getElementById('profileView').style.display = 'block';
+            
+            // Carrega dados no perfil
+            document.getElementById('profileBanner').src = currentUser.picture;
+            document.getElementById('profileAvatar').src = currentUser.picture;
+            document.getElementById('profileFullName').innerText = currentUser.name;
+            document.getElementById('profileBio').innerText = `E-mail: ${currentUser.email}`;
+        }
+
+        function backToFeed() {
+            document.getElementById('profileView').style.display = 'none';
+            document.getElementById('feedView').style.display = 'block';
+        }
+
+        window.onload = function() {
+            if (typeof google !== 'undefined') {
+                google.accounts.id.initialize({
+                    client_id: "8393724573-kdnas52bjnhjvtkhahtqchm1p000b0i4.apps.googleusercontent.com",
+                    callback: handleCredentialResponse
+                });
+                google.accounts.id.renderButton(
+                    document.getElementById("buttonDiv"),
+                    { theme: "outline", size: "large", text: "sign_in_with", shape: "rectangular" }
+                );
+            }
+        }
+
     </script>
 
     <style type="text/tailwindcss">
@@ -79,82 +162,12 @@
     <!-- TELA DE LOGIN -->
     <div id="loginScreen" class="fixed inset-0 z-[100] bg-white flex items-center justify-center">
         <div class="w-full max-w-md px-4">
-            
             <div class="text-center mb-8">
-                <img src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Orkut_Logo_2.png" 
-                     class="h-16 mx-auto mb-3" 
-                     alt="Logo Orkut">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Orkut_Logo_2.png" class="h-16 mx-auto mb-3" alt="Logo Orkut">
                 <h1 class="nav-logo-text text-4xl">orkut</h1>
                 <p class="text-gray-500 mt-2">Conecte-se às pessoas que fazem a sua vida.</p>
             </div>
-
-            <div class="flex border-b mb-6">
-                <button id="tabLogin" class="flex-1 py-2 text-center tab-active">Entrar</button>
-                <button id="tabCadastro" class="flex-1 py-2 text-center text-gray-500">Criar conta</button>
-            </div>
-
-            <div id="formLogin" class="space-y-4">
-                <div>
-                    <input type="email" placeholder="E-mail" class="w-full p-3 border border-gray-300 rounded focus:border-orkut-purple outline-none">
-                </div>
-                <div>
-                    <input type="password" placeholder="Senha" class="w-full p-3 border border-gray-300 rounded focus:border-orkut-purple outline-none">
-                </div>
-                <button class="w-full bg-orkut-purple text-white py-3 rounded font-bold hover:bg-orkut-dark transition-colors">
-                    Entrar
-                </button>
-                <p class="text-center text-sm text-orkut-purple mt-4 cursor-pointer">Esqueceu sua senha?</p>
-
-                <div class="flex items-center my-6">
-                    <hr class="flex-1 border-t">
-                    <span class="px-3 text-gray-500 text-sm">ou</span>
-                    <hr class="flex-1 border-t">
-                </div>
-
-                <!-- BOTÃO DO GOOGLE -->
-                <div class="text-center">
-                    <div id="g_id_onload"
-                         data-client_id="8393724573-kdnas52bjnhjvtkhahtqchm1p000b0i4.apps.googleusercontent.com"
-                         data-callback="handleCredentialResponse"
-                         data-auto_prompt="false">
-                    </div>
-
-                    <div class="g_id_signin"
-                         data-type="standard"
-                         data-size="large"
-                         data-theme="outline"
-                         data-text="sign_in_with"
-                         data-shape="rectangular"
-                         data-logo_alignment="left">
-                    </div>
-                </div>
-
-            </div>
-
-            <div id="formCadastro" class="space-y-4 hidden">
-                <div class="grid grid-cols-2 gap-4">
-                    <input type="text" placeholder="Nome" class="p-3 border border-gray-300 rounded focus:border-orkut-purple outline-none">
-                    <input type="text" placeholder="Sobrenome" class="p-3 border border-gray-300 rounded focus:border-orkut-purple outline-none">
-                </div>
-                <div>
-                    <input type="email" placeholder="E-mail" class="w-full p-3 border border-gray-300 rounded focus:border-orkut-purple outline-none">
-                </div>
-                <div>
-                    <input type="password" placeholder="Senha" class="w-full p-3 border border-gray-300 rounded focus:border-orkut-purple outline-none">
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <select class="p-3 border border-gray-300 rounded focus:border-orkut-purple outline-none">
-                        <option>Sexo</option>
-                        <option>Masculino</option>
-                        <option>Feminino</option>
-                    </select>
-                    <input type="date" placeholder="Data de nascimento" class="p-3 border border-gray-300 rounded focus:border-orkut-purple outline-none">
-                </div>
-                <button class="w-full bg-orkut-purple text-white py-3 rounded font-bold hover:bg-orkut-dark transition-colors">
-                    Cadastrar
-                </button>
-            </div>
-
+            <div id="buttonDiv" class="text-center"></div>
         </div>
     </div>
 
@@ -164,17 +177,13 @@
         <nav class="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-50 shadow-sm">
             <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div class="flex justify-between items-center h-16">
-                    <div class="flex-shrink-0 flex items-center gap-2 cursor-pointer">
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Orkut_Logo_2.png" 
-                             class="h-8 w-auto" 
-                             alt="Logo Orkut">
+                    <div class="flex-shrink-0 flex items-center gap-2 cursor-pointer" onclick="backToFeed()">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Orkut_Logo_2.png" class="h-8 w-auto" alt="Logo Orkut">
                         <span class="nav-logo-text">orkut</span>
                     </div>
                     <div class="flex items-center space-x-6">
-                        <i class="fa fa-home text-2xl cursor-pointer hover:text-orkut-purple transition-colors" title="Início"></i>
-                        <i class="fa fa-paper-plane-o text-2xl cursor-pointer hover:text-orkut-purple transition-colors" title="Recados"></i>
-                        <i class="fa fa-compass text-2xl cursor-pointer hover:text-orkut-purple transition-colors" title="Explorar"></i>
-                        <i class="fa fa-heart-o text-2xl cursor-pointer hover:text-orkut-purple transition-colors" title="Favoritos"></i>
+                        <i class="fa fa-home text-2xl cursor-pointer hover:text-orkut-purple transition-colors" title="Início" onclick="backToFeed()"></i>
+                        <i class="fa fa-user text-2xl cursor-pointer hover:text-orkut-purple transition-colors" title="Perfil" onclick="openProfile()"></i>
                     </div>
                 </div>
             </div>
@@ -182,118 +191,110 @@
 
         <main class="max-w-6xl mx-auto pt-20 pb-10 px-4 grid grid-cols-1 md:grid-cols-3 gap-6">
             
+            <!-- COLUNA CENTRAL -->
             <div class="col-span-2 space-y-6">
 
-                <div class="bg-white border rounded-lg p-4 shadow-sm">
-                     <p class="text-center text-sm text-gray-500 mb-3">Destaques</p>
-                     <div class="flex space-x-4 overflow-x-auto pb-2">
-                        <div class="flex flex-col items-center space-y-1 opacity-50 story-item cursor-pointer">
-                            <div class="w-16 h-16 rounded-full bg-orkut-light flex items-center justify-center text-orkut-dark text-2xl">
-                                <i class="fa fa-plus-circle"></i>
-                            </div>
-                            <span class="text-xs">Adicionar</span>
+                <!-- VISUALIZAÇÃO DO FEED -->
+                <div id="feedView">
+                    
+                    <!-- CAIXA DE CRIAÇÃO DE POST -->
+                    <div class="bg-white border rounded-lg p-4 shadow-sm">
+                        <div class="flex items-center space-x-3 mb-4">
+                            <img id="profilePicture" src="https://picsum.photos/seed/me/100" class="w-10 h-10 rounded-full object-cover cursor-pointer" onclick="openProfile()" alt="Me">
+                            <input type="text" placeholder="No que você está pensando?" class="flex-1 bg-gray-100 border-none rounded-full px-4 py-2 focus:outline-none cursor-pointer" onclick="togglePostBox()">
+                        </div>
+                        
+                        <div class="flex justify-around pt-3 border-t">
+                            <button class="flex items-center space-x-2 text-gray-600 hover:bg-gray-100 px-4 py-2 rounded w-full justify-center" onclick="togglePostBox()">
+                                <i class="fa fa-image text-green-500 text-xl"></i>
+                                <span class="text-sm font-medium">Foto/Vídeo</span>
+                            </button>
+                            <button class="flex items-center space-x-2 text-gray-600 hover:bg-gray-100 px-4 py-2 rounded w-full justify-center">
+                                <i class="fa fa-youtube-play text-red-500 text-xl"></i>
+                                <span class="text-sm font-medium">Vídeo</span>
+                            </button>
+                            <button class="flex items-center space-x-2 text-gray-600 hover:bg-gray-100 px-4 py-2 rounded w-full justify-center">
+                                <i class="fa fa-file-image-o text-purple-500 text-xl"></i>
+                                <span class="text-sm font-medium">GIF</span>
+                            </button>
                         </div>
                     </div>
+
+                    <!-- CAIXA DE ESCREVER POST (ESCONDIDA) -->
+                    <div id="postBox" class="hidden bg-white border rounded-lg p-4 shadow-sm space-y-4">
+                        <h3 class="font-bold text-lg border-b pb-2">Criar publicação</h3>
+                        <textarea id="postText" placeholder="No que você está pensando?" class="w-full p-3 rounded bg-gray-50 focus:outline-none resize-none h-32"></textarea>
+                        
+                        <div class="space-y-2">
+                            <label class="text-sm font-semibold text-gray-600">URL da Imagem:</label>
+                            <input id="postImageUrl" type="text" placeholder="Cole o link da imagem aqui" class="w-full p-2 border rounded">
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="text-sm font-semibold text-gray-600">URL do Vídeo (YouTube):</label>
+                            <input id="postVideoUrl" type="text" placeholder="Cole o link do vídeo aqui" class="w-full p-2 border rounded">
+                        </div>
+
+                        <div class="flex justify-end pt-3 border-t">
+                            <button class="bg-gray-300 text-gray-700 px-4 py-2 rounded mr-2" onclick="togglePostBox()">Cancelar</button>
+                            <button class="bg-orkut-purple text-white px-6 py-2 rounded font-bold" onclick="publishPost()">Publicar</button>
+                        </div>
+                    </div>
+
+                    <!-- FEED DE POSTS -->
+                    <div id="feedContainer" class="space-y-6 mt-4">
+                        <!-- Os posts aparecem aqui dinamicamente -->
+                        <p class="text-center text-gray-500 py-10">Ainda não há publicações. Seja o primeiro a postar! ✨</p>
+                    </div>
+
                 </div>
 
-                <article class="bg-white border rounded-lg shadow-sm post-item">
-                    <div class="p-3 flex items-center justify-between">
-                        <div class="flex items-center space-x-2">
-                            <img src="https://picsum.photos/seed/galera/100" class="w-9 h-9 rounded-full object-cover" alt="User">
-                            <span class="font-semibold text-sm">saudades_da_epoca</span>
+                <!-- VISUALIZAÇÃO DO PERFIL -->
+                <div id="profileView" class="hidden">
+                    
+                    <!-- CAPA E FOTO -->
+                    <div class="bg-white rounded-lg shadow-sm overflow-hidden mb-4">
+                        <div class="h-48 bg-gradient-to-r from-orkut-purple to-orkut-dark relative">
+                            <img id="profileBanner" src="" class="w-full h-full object-cover opacity-50" alt="Banner">
                         </div>
-                        <i class="fa fa-ellipsis-h cursor-pointer"></i>
-                    </div>
-                    <div class="w-full">
-                        <img src="https://picsum.photos/seed/orkut/800/600" class="w-full object-cover" alt="Post image">
-                    </div>
-                    <div class="p-3">
-                        <div class="flex justify-between items-center mb-2">
-                            <div class="flex space-x-4">
-                                <i class="fa fa-heart-o text-2xl cursor-pointer heart-btn heart-animation"></i>
-                                <i class="fa fa-comment-o text-2xl cursor-pointer comment-btn"></i>
-                                <i class="fa fa-paper-plane-o text-2xl cursor-pointer"></i>
+                        <div class="px-6 pb-4 relative">
+                            <div class="flex items-end justify-between -mt-12 mb-4">
+                                <img id="profileAvatar" src="" class="w-32 h-32 rounded-full border-4 border-white object-cover" alt="Profile">
+                                <button class="bg-gray-100 hover:bg-gray-200 px-4 py-1 rounded-full text-sm font-bold">Editar perfil</button>
                             </div>
-                            <i class="fa fa-bookmark-o text-2xl cursor-pointer save-btn"></i>
+                            <h1 id="profileFullName" class="text-2xl font-bold"></h1>
+                            <p id="profileBio" class="text-gray-600 mt-1"></p>
                         </div>
-                        <p class="font-semibold text-sm mb-1 like-count">Curtido por <span class="text-orkut-dark">amiga1</span> e outras pessoas</p>
-                        <div class="text-sm mb-3">
-                            <span class="font-semibold mr-1">saudades_da_epoca</span> 
-                            Quem lembra? #Nostalgia #OrkutForever 🟣🟡
-                        </div>
-                        <div class="comments-section hidden border-t border-gray-100 pt-3 mt-2">
-                            <p class="text-xs text-gray-500 mb-2">Comentários:</p>
-                            <div class="comment-list space-y-2 mb-3"></div>
-                            <div class="flex gap-2">
-                                <input type="text" placeholder="Escreva um depoimento..." class="flex-1 text-sm border rounded px-2 py-1 focus:outline-none focus:border-orkut-purple">
-                                <button class="text-xs bg-orkut-purple text-white px-3 py-1 rounded post-comment">Publicar</button>
-                            </div>
-                        </div>
-                        <p class="text-gray-400 text-xs mt-2 uppercase">Há 2 horas</p>
                     </div>
-                </article>
 
-                <article class="bg-white border rounded-lg shadow-sm post-item">
-                    <div class="p-3 flex items-center justify-between">
-                        <div class="flex items-center space-x-2">
-                            <img src="https://picsum.photos/seed/dev/100" class="w-9 h-9 rounded-full object-cover" alt="User">
-                            <span class="font-semibold text-sm">web_design_br</span>
-                        </div>
-                        <i class="fa fa-ellipsis-h cursor-pointer"></i>
+                    <!-- POSTS DO PERFIL -->
+                    <h3 class="font-bold text-lg mb-3">Publicações</h3>
+                    <div id="profilePosts" class="space-y-6">
+                        <p class="text-center text-gray-500 py-10">Suas postagens aparecerão aqui.</p>
                     </div>
-                    <div class="w-full">
-                        <img src="https://picsum.photos/seed/code/800/600" class="w-full object-cover" alt="Post image">
-                    </div>
-                    <div class="p-3">
-                        <div class="flex justify-between items-center mb-2">
-                            <div class="flex space-x-4">
-                                <i class="fa fa-heart-o text-2xl cursor-pointer heart-btn heart-animation"></i>
-                                <i class="fa fa-comment-o text-2xl cursor-pointer comment-btn"></i>
-                                <i class="fa fa-paper-plane-o text-2xl cursor-pointer"></i>
-                            </div>
-                            <i class="fa fa-bookmark-o text-2xl cursor-pointer save-btn"></i>
-                        </div>
-                        <p class="font-semibold text-sm mb-1 like-count">Curtido por <span class="text-orkut-dark">devs</span> e outras pessoas</p>
-                        <div class="text-sm mb-3">
-                            <span class="font-semibold mr-1">web_design_br</span> 
-                            Layout novo, mesma essência! ✨
-                        </div>
-                        <div class="comments-section hidden border-t border-gray-100 pt-3 mt-2">
-                            <p class="text-xs text-gray-500 mb-2">Comentários:</p>
-                            <div class="comment-list space-y-2 mb-3"></div>
-                            <div class="flex gap-2">
-                                <input type="text" placeholder="Escreva um depoimento..." class="flex-1 text-sm border rounded px-2 py-1 focus:outline-none focus:border-orkut-purple">
-                                <button class="text-xs bg-orkut-purple text-white px-3 py-1 rounded post-comment">Publicar</button>
-                            </div>
-                        </div>
-                        <p class="text-gray-400 text-xs mt-2 uppercase">Há 1 dia</p>
-                    </div>
-                </article>
+
+                </div>
 
             </div>
 
+            <!-- BARRA LATERAL -->
             <div class="hidden md:block pt-4">
                 <div class="fixed w-80">
-                    <div class="flex items-center justify-between mb-6">
+                    <div class="bg-white p-4 rounded-lg shadow-sm border mb-6 cursor-pointer" onclick="openProfile()">
                         <div class="flex items-center space-x-3">
-                            <img id="profilePicture" src="https://picsum.photos/seed/meuperfil/100" class="w-14 h-14 rounded-full object-cover border-2 border-orkut-yellow" alt="Profile">
+                            <img id="profilePictureSide" src="" class="w-14 h-14 rounded-full object-cover border-2 border-orkut-yellow" alt="Profile">
                             <div>
-                                <p id="profileName" class="font-semibold">seu_nome</p>
-                                <p class="text-gray-500 text-sm">Membro desde 2026</p>
+                                <p id="profileName" class="font-semibold"></p>
+                                <p id="profileEmail" class="text-gray-500 text-xs"></p>
                             </div>
                         </div>
-                        <button class="text-xs font-semibold text-orkut-purple edit-profile">Editar</button>
                     </div>
+                </div>
+            </div>
 
-                    <div class="mb-6">
-                        <div class="flex justify-between items-center mb-3">
-                            <h3 class="text-sm font-semibold text-gray-500">Minhas Comunidades</h3>
-                            <a href="#" class="text-xs font-semibold text-gray-700">Ver todas</a>
-                        </div>
-                        <div class="space-y-4">
-                            <div class="flex items-center space-x-2 community-item cursor-pointer">
-                                <div class="w-9 h-9 rounded-full bg-orkut-light flex items-center justify-center text-orkut-dark">
-                                    <i class="fa fa-code"></i>
-                                </div>
-                                <div class="flex-1">
-                                    <p class="text-sm font-semibold">HTML5 e CSS3</p>
+        </main>
+
+    </div>
+
+</body>
+</html>
