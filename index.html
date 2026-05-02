@@ -33,7 +33,7 @@
         }
 
         let currentUser = {};
-        let allPosts = []; // Armazena todos os posts
+        let allPosts = [];
 
         function handleCredentialResponse(response) {
             const payload = JSON.parse(atob(response.credential.split('.')[1]));
@@ -42,14 +42,12 @@
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('mainContent').style.display = 'block';
             
-            // Atualiza dados na barra lateral
             document.getElementById('profileName').innerText = payload.name;
             document.getElementById('profilePicture').src = payload.picture;
             document.getElementById('profileEmail').innerText = payload.email;
             document.getElementById('profilePictureSide').src = payload.picture;
         }
 
-        // --- SISTEMA DE POSTAGEM ---
         function togglePostBox() {
             const box = document.getElementById('postBox');
             box.classList.toggle('hidden');
@@ -73,16 +71,13 @@
                 user: currentUser
             };
 
-            allPosts.unshift(postData); // Adiciona no início da lista
+            allPosts.unshift(postData);
             renderPost(postData);
 
-            // Limpa campos
             document.getElementById('postText').value = '';
             document.getElementById('postImageUrl').value = '';
             document.getElementById('postVideoUrl').value = '';
             document.getElementById('postBox').classList.add('hidden');
-
-            // Atualiza a página de relevantes também
             renderRelevantPosts();
         }
 
@@ -120,7 +115,7 @@
 
         function renderRelevantPosts() {
             const container = document.getElementById('relevantContainer');
-            container.innerHTML = ''; // Limpa
+            container.innerHTML = '';
             
             if(allPosts.length === 0) {
                 container.innerHTML = '<p class="text-center text-gray-500 py-6">Nenhuma publicação ainda.</p>';
@@ -145,21 +140,15 @@
             
             items.forEach(item => {
                 const text = item.textContent.toLowerCase();
-                if(text.includes(query)) {
-                    item.style.display = 'block';
-                } else {
-                    item.style.display = 'none';
-                }
+                item.style.display = text.includes(query) ? 'block' : 'none';
             });
         }
 
-        // --- NAVEGAÇÃO ---
         function openProfile() {
             document.getElementById('feedView').style.display = 'none';
             document.getElementById('searchView').style.display = 'none';
             document.getElementById('profileView').style.display = 'block';
             
-            // Carrega dados no perfil
             document.getElementById('profileBanner').src = currentUser.picture;
             document.getElementById('profileAvatar').src = currentUser.picture;
             document.getElementById('profileFullName').innerText = currentUser.name;
@@ -182,7 +171,7 @@
         window.onload = function() {
             if (typeof google !== 'undefined') {
                 google.accounts.id.initialize({
-                    client_id: "8393724573-kdnas5bjnhjvtkhahtqchm1p000b0i4.apps.googleusercontent.com",
+                    client_id: "8393724573-kdnas52bjnhjvtkhahtqchm1p000b0i4.apps.googleusercontent.com",
                     callback: handleCredentialResponse
                 });
                 google.accounts.id.renderButton(
@@ -224,7 +213,6 @@
     <div id="loginScreen" class="fixed inset-0 z-[100] bg-white flex items-center justify-center">
         <div class="w-full max-w-md px-4">
             <div class="text-center mb-8">
-                <!-- LOGO ORIGINAL -->
                 <img src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Orkut_Logo_2.png" class="h-16 mx-auto mb-3" alt="Logo Orkut">
                 <p class="text-gray-500 mt-2">Conecte-se às pessoas que fazem a sua vida.</p>
             </div>
@@ -233,7 +221,7 @@
     </div>
 
     <!-- CONTEÚDO PRINCIPAL -->
-    <div id="mainContent" class="hidden pb-16"> <!-- pb-16 para dar espaço na barra inferior -->
+    <div id="mainContent" class="hidden pb-20">
 
         <nav class="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-50 shadow-sm">
             <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -251,16 +239,13 @@
 
         <main class="max-w-6xl mx-auto pt-20 pb-10 px-4 grid grid-cols-1 md:grid-cols-3 gap-6">
             
-            <!-- COLUNA CENTRAL -->
             <div class="col-span-2 space-y-6">
 
-                <!-- VISUALIZAÇÃO DO FEED -->
                 <div id="feedView">
                     
-                    <!-- CAIXA DE CRIAÇÃO DE POST -->
                     <div class="bg-white border rounded-lg p-4 shadow-sm">
                         <div class="flex items-center space-x-3 mb-4">
-                            <img id="profilePicture" src="https://picsum.photos/seed/me/100" class="w-10 h-10 rounded-full object-cover cursor-pointer" onclick="openProfile()" alt="Me">
+                            <img id="profilePicture" src="" class="w-10 h-10 rounded-full object-cover cursor-pointer" onclick="openProfile()" alt="Me">
                             <input type="text" placeholder="No que você está pensando?" class="flex-1 bg-gray-100 border-none rounded-full px-4 py-2 focus:outline-none cursor-pointer" onclick="togglePostBox()">
                         </div>
                         
@@ -280,7 +265,6 @@
                         </div>
                     </div>
 
-                    <!-- CAIXA DE ESCREVER POST -->
                     <div id="postBox" class="hidden bg-white border rounded-lg p-4 shadow-sm space-y-4">
                         <h3 class="font-bold text-lg border-b pb-2">Criar publicação</h3>
                         <textarea id="postText" placeholder="No que você está pensando?" class="w-full p-3 rounded bg-gray-50 focus:outline-none resize-none h-32"></textarea>
@@ -291,7 +275,7 @@
                         </div>
 
                         <div class="space-y-2">
-                            <label class="text-sm font-semibold text-gray-600">URL do Vídeo (YouTube):</label>
+                            <label class="text-sm font-semibold text-gray-600">URL do Vídeo:</label>
                             <input id="postVideoUrl" type="text" placeholder="Cole o link do vídeo aqui" class="w-full p-2 border rounded">
                         </div>
 
@@ -301,14 +285,12 @@
                         </div>
                     </div>
 
-                    <!-- FEED DE POSTS -->
                     <div id="feedContainer" class="space-y-6 mt-4">
                         <p class="text-center text-gray-500 py-10">Ainda não há publicações. Seja o primeiro a postar! ✨</p>
                     </div>
 
                 </div>
 
-                <!-- VISUALIZAÇÃO DE BUSCA / RELEVANTES -->
                 <div id="searchView" class="hidden">
                     <div class="bg-white border rounded-lg p-4 shadow-sm mb-6">
                         <h2 class="text-xl font-bold mb-4">Encontrar</h2>
@@ -317,14 +299,31 @@
                             <i class="fa fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
                         </div>
                     </div>
-
                     <h3 class="font-bold text-lg mb-3">Posts Relevantes</h3>
-                    <div id="relevantContainer">
-                        <!-- Os posts aparecem aqui -->
-                    </div>
+                    <div id="relevantContainer"></div>
                 </div>
 
-                <!-- VISUALIZAÇÃO DO PERFIL -->
                 <div id="profileView" class="hidden">
-                    <div class="bg-white rounded-lg
+                    <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                        <div class="h-48 bg-gradient-to-r from-orkut-purple to-orkut-dark relative">
+                            <img id="profileBanner" src="" class="w-full h-full object-cover opacity-50" alt="Banner">
+                        </div>
+                        <div class="px-6 pb-4 relative">
+                            <div class="flex items-end justify-between -mt-12 mb-4">
+                                <img id="profileAvatar" src="" class="w-32 h-32 rounded-full border-4 border-white object-cover" alt="Profile">
+                                <button class="bg-gray-100 hover:bg-gray-200 px-4 py-1 rounded-full text-sm font-bold">Editar perfil</button>
+                            </div>
+                            <h1 id="profileFullName" class="text-2xl font-bold"></h1>
+                            <p id="profileBio" class="text-gray-600 mt-1"></p>
+                        </div>
+                    </div>
+                    <h3 class="font-bold text-lg mt-6 mb-3">Minhas Publicações</h3>
+                    <div id="myPosts" class="space-y-4"></div>
+                </div>
+
+            </div>
+
+            <div class="hidden md:block pt-4">
+                <div class="fixed w-80">
+                    <div class="bg-white p-4 rounded-lg shadow-sm border">
                         
