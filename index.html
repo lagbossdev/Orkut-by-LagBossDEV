@@ -10,6 +10,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Trebuchet+MS:wght@400;700&display=swap" rel="stylesheet">
     
+    <!-- SCRIPT DO GOOGLE -->
     <script src="https://accounts.google.com/gsi/client" async defer></script>
 
     <script>
@@ -32,7 +33,6 @@
             }
         }
 
-        // --- BANCO DE DADOS SIMULADO ---
         let currentUser = {};
         let allPosts = JSON.parse(localStorage.getItem('allPosts') || '[]');
         let allUsers = [
@@ -43,14 +43,11 @@
         ];
         let myFriends = [];
         let following = [];
-        let pendingRequests = [];
 
-        // --- FUNÇÕES PRINCIPAIS ---
         function handleCredentialResponse(response) {
             const payload = JSON.parse(atob(response.credential.split('.')[1]));
             currentUser = payload;
             
-            // Adiciona o usuário atual na lista se não existir
             if(!allUsers.find(u => u.email === currentUser.email)) {
                 allUsers.push({
                     id: Date.now(),
@@ -62,7 +59,6 @@
             
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('mainContent').style.display = 'block';
-            
             updateUI();
             renderAllPosts();
         }
@@ -73,10 +69,8 @@
             document.getElementById('profileEmail').innerText = currentUser.email;
         }
 
-        // --- SISTEMA DE POSTAGEM ---
         function togglePostBox() {
-            const box = document.getElementById('postBox');
-            box.classList.toggle('hidden');
+            document.getElementById('postBox').classList.toggle('hidden');
         }
 
         function publishPost() {
@@ -104,12 +98,8 @@
 
             allPosts.unshift(postData);
             localStorage.setItem('allPosts', JSON.stringify(allPosts));
-            
             renderPost(postData);
-            clearPostBox();
-        }
-
-        function clearPostBox() {
+            
             document.getElementById('postText').value = '';
             document.getElementById('postImageUrl').value = '';
             document.getElementById('postVideoUrl').value = '';
@@ -167,7 +157,6 @@
             allPosts.forEach(post => renderPost(post));
         }
 
-        // --- BUSCA ---
         function openSearch() {
             switchView('searchView');
             renderRelevantPosts();
@@ -196,7 +185,6 @@
             });
         }
 
-        // --- PERFIL ---
         function openProfile() {
             switchView('profileView');
             document.getElementById('profileBanner').src = currentUser.picture;
@@ -205,7 +193,6 @@
             document.getElementById('profileBio').innerText = `E-mail: ${currentUser.email}`;
         }
 
-        // --- AMIGOS ---
         function openFriends() {
             switchView('friendsView');
             renderFriendsList();
@@ -243,7 +230,7 @@
             list.innerHTML = '';
             
             allUsers.forEach(user => {
-                if(user.email === currentUser.email) return; // Não mostra ele mesmo
+                if(user.email === currentUser.email) return;
                 
                 const isFriend = myFriends.includes(user.id);
                 const isFollowing = following.includes(user.id);
@@ -268,11 +255,9 @@
         }
 
         function addFriend(userId) {
-            if(!myFriends.includes(userId) && !pendingRequests.includes(userId)) {
-                pendingRequests.push(userId);
-                alert('Solicitação enviada!');
-                // Simulação: para ficar mútuo, já adiciona como amigo
+            if(!myFriends.includes(userId)) {
                 myFriends.push(userId);
+                alert('Solicitação enviada e aceita!');
                 renderAllUsers();
                 renderFriendsList();
             }
@@ -287,7 +272,6 @@
             renderAllUsers();
         }
 
-        // --- NAVEGAÇÃO ---
         function switchView(viewId) {
             document.getElementById('feedView').style.display = 'none';
             document.getElementById('searchView').style.display = 'none';
@@ -301,17 +285,25 @@
             switchView('feedView');
         }
 
+        // FUNÇÃO QUE GARANTE O BOTÃO APARECER
         window.onload = function() {
-            if (typeof google !== 'undefined') {
-                google.accounts.id.initialize({
-                    client_id: "8393724573-kdnas52bjnhjvtkhahtqchm1p000b0i4.apps.googleusercontent.com",
-                    callback: handleCredentialResponse
-                });
-                google.accounts.id.renderButton(
-                    document.getElementById("buttonDiv"),
-                    { theme: "outline", size: "large", text: "sign_in_with", shape: "rectangular" }
-                });
-            }
+            // Espera um pouco para garantir que carregou tudo
+            setTimeout(() => {
+                if (typeof google !== 'undefined') {
+                    google.accounts.id.initialize({
+                        client_id: "8393724573-kdnas52bjnhjvtkhahtqchm1p000b0i4.apps.googleusercontent.com",
+                        callback: handleCredentialResponse
+                    });
+                    google.accounts.id.renderButton(
+                        document.getElementById("buttonDiv"),
+                        { theme: "outline", size: "large", text: "sign_in_with", shape: "rectangular" }
+                    );
+                    // Prompt de login automático
+                    google.accounts.id.prompt();
+                } else {
+                    console.error("Erro: Biblioteca do Google não carregou.");
+                }
+            }, 500);
         }
 
     </script>
@@ -344,14 +336,14 @@
                 <img src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Orkut_Logo_2.png" class="h-16 mx-auto mb-3" alt="Logo Orkut">
                 <p class="text-gray-500 mt-2">Conecte-se às pessoas que fazem a sua vida.</p>
             </div>
-            <div id="buttonDiv" class="text-center"></div>
+            <!-- AQUI ESTÁ O BOTÃO -->
+            <div id="buttonDiv" class="flex justify-center"></div>
         </div>
     </div>
 
     <!-- CONTEÚDO PRINCIPAL -->
     <div id="mainContent" class="hidden pb-20">
 
-        <!-- CABEÇALHO -->
         <nav class="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-50 shadow-sm">
             <div class="max-w-6xl mx-auto px-4">
                 <div class="flex justify-between items-center h-14">
@@ -367,8 +359,15 @@
             </div>
         </nav>
 
-        <!-- CONTEÚDO -->
-        <main class="max-w-2xl mx-auto pt-16 px-3">
-            
-            <!-- FEED -->
-            <div
+        <!-- BARRA INFERIOR -->
+        <footer class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
+            <div class="max-w-md mx-auto flex justify-around items-center h-14">
+                <button onclick="backToFeed()" class="flex flex-col items-center text-gray-600 hover:text-orkut-purple">
+                    <i class="fa fa-home text-xl"></i>
+                    <span class="text-xs">Início</span>
+                </button>
+                <button onclick="togglePostBox()" class="bg-orkut-purple text-white w-12 h-12 rounded-full flex items-center justify-center -mt-6 shadow-lg">
+                    <i class="fa fa-plus text-xl"></i>
+                </button>
+                <button onclick="openSearch()" class="flex flex-col items-center text-gray-600 hover:text-orkut-purple">
+                   
