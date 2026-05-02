@@ -6,8 +6,6 @@
     <title>orkut</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
-    
-    <!-- FONTE ORIGINAL -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Trebuchet+MS:wght@400;700&display=swap" rel="stylesheet">
@@ -35,6 +33,7 @@
         }
 
         let currentUser = {};
+        let allPosts = []; // Armazena todos os posts
 
         function handleCredentialResponse(response) {
             const payload = JSON.parse(atob(response.credential.split('.')[1]));
@@ -43,11 +42,14 @@
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('mainContent').style.display = 'block';
             
+            // Atualiza dados na barra lateral
             document.getElementById('profileName').innerText = payload.name;
             document.getElementById('profilePicture').src = payload.picture;
             document.getElementById('profileEmail').innerText = payload.email;
+            document.getElementById('profilePictureSide').src = payload.picture;
         }
 
+        // --- SISTEMA DE POSTAGEM ---
         function togglePostBox() {
             const box = document.getElementById('postBox');
             box.classList.toggle('hidden');
@@ -56,55 +58,131 @@
         function publishPost() {
             const text = document.getElementById('postText').value;
             const imageUrl = document.getElementById('postImageUrl').value;
+            const videoUrl = document.getElementById('postVideoUrl').value;
 
-            if(!text && !imageUrl) {
-                alert('Escreva algo ou adicione uma foto!');
+            if(!text && !imageUrl && !videoUrl) {
+                alert('Escreva algo ou adicione uma mídia!');
                 return;
             }
 
-            const feed = document.getElementById('feedContainer');
-            const postElement = document.createElement('div');
-            postElement.className = 'orkut-box bg-white mb-4';
-            postElement.innerHTML = `
-                <div class="p-2 border-b flex items-center">
-                    <img src="${currentUser.picture}" class="w-10 h-10 rounded-full mr-2" alt="User">
-                    <span class="font-bold text-orkut-dark">${currentUser.name}</span>
-                </div>
-                <div class="p-3">
-                    <p class="text-sm mb-2 whitespace-pre-wrap">${text}</p>
-                    ${imageUrl ? `<img src="${imageUrl}" class="w-full border" alt="Post image">` : ''}
-                </div>
-                <div class="bg-orkut-light p-2 text-right">
-                    <button class="orkut-button-small text-xs bg-orkut-yellow text-orkut-dark border border-yellow-600 px-2 rounded">Curtir</button>
-                    <button class="orkut-button-small text-xs bg-gray-200 border border-gray-400 px-2 rounded ml-1">Comentar</button>
-                </div>
-            `;
+            const postData = {
+                id: 'post-' + Date.now(),
+                text: text,
+                image: imageUrl,
+                video: videoUrl,
+                user: currentUser
+            };
 
-            feed.insertBefore(postElement, feed.firstChild);
-            
+            allPosts.unshift(postData); // Adiciona no início da lista
+            renderPost(postData);
+
+            // Limpa campos
             document.getElementById('postText').value = '';
             document.getElementById('postImageUrl').value = '';
+            document.getElementById('postVideoUrl').value = '';
             document.getElementById('postBox').classList.add('hidden');
+
+            // Atualiza a página de relevantes também
+            renderRelevantPosts();
         }
 
+        function renderPost(post) {
+            const feed = document.getElementById('feedContainer');
+            const postElement = document.createElement('article');
+            postElement.className = 'bg-white border rounded-lg shadow-sm post-item';
+            postElement.innerHTML = `
+                <div class="p-3 flex items-center justify-between">
+                    <div class="flex items-center space-x-2">
+                        <img src="${post.user.picture}" class="w-9 h-9 rounded-full object-cover" alt="User">
+                        <span class="font-semibold text-sm">${post.user.name}</span>
+                    </div>
+                    <i class="fa fa-ellipsis-h cursor-pointer"></i>
+                </div>
+                <div class="px-3 pb-3">
+                    <p class="text-gray-800 whitespace-pre-wrap">${post.text}</p>
+                </div>
+                ${post.image ? `<div class="w-full"><img src="${post.image}" class="w-full object-cover" alt="Post image"></div>` : ''}
+                ${post.video ? `<div class="w-full"><iframe class="w-full h-64" src="${post.video.replace('watch?v=', 'embed/')}" frameborder="0" allowfullscreen></iframe></div>` : ''}
+                <div class="p-3">
+                    <div class="flex justify-between items-center mb-2">
+                        <div class="flex space-x-4">
+                            <i class="fa fa-heart-o text-2xl cursor-pointer heart-btn heart-animation"></i>
+                            <i class="fa fa-comment-o text-2xl cursor-pointer comment-btn"></i>
+                            <i class="fa fa-paper-plane-o text-2xl cursor-pointer"></i>
+                        </div>
+                        <i class="fa fa-bookmark-o text-2xl cursor-pointer"></i>
+                    </div>
+                    <p class="text-gray-400 text-xs mt-2 uppercase">Agora mesmo</p>
+                </div>
+            `;
+            feed.insertBefore(postElement, feed.firstChild);
+        }
+
+        function renderRelevantPosts() {
+            const container = document.getElementById('relevantContainer');
+            container.innerHTML = ''; // Limpa
+            
+            if(allPosts.length === 0) {
+                container.innerHTML = '<p class="text-center text-gray-500 py-6">Nenhuma publicação ainda.</p>';
+                return;
+            }
+
+            allPosts.forEach(post => {
+                const div = document.createElement('div');
+                div.className = 'bg-white border rounded p-3 mb-3';
+                div.innerHTML = `
+                    <p class="font-semibold text-sm mb-1">${post.user.name}</p>
+                    <p class="text-sm text-gray-700 mb-2">${post.text.substring(0, 100)}${post.text.length > 100 ? '...' : ''}</p>
+                    ${post.image ? `<img src="${post.image}" class="w-full h-32 object-cover rounded mb-2">` : ''}
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        function searchPosts() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const items = document.querySelectorAll('#relevantContainer > div');
+            
+            items.forEach(item => {
+                const text = item.textContent.toLowerCase();
+                if(text.includes(query)) {
+                    item.style.display = 'block';
+                } else {
+                    item.style.display = 'none';
+                }
+            });
+        }
+
+        // --- NAVEGAÇÃO ---
         function openProfile() {
             document.getElementById('feedView').style.display = 'none';
+            document.getElementById('searchView').style.display = 'none';
             document.getElementById('profileView').style.display = 'block';
             
-            document.getElementById('profileAvatarBig').src = currentUser.picture;
-            document.getElementById('profileNameBig').innerText = currentUser.name;
-            document.getElementById('profileEmailBig').innerText = currentUser.email;
+            // Carrega dados no perfil
+            document.getElementById('profileBanner').src = currentUser.picture;
+            document.getElementById('profileAvatar').src = currentUser.picture;
+            document.getElementById('profileFullName').innerText = currentUser.name;
+            document.getElementById('profileBio').innerText = `E-mail: ${currentUser.email}`;
         }
 
         function backToFeed() {
             document.getElementById('profileView').style.display = 'none';
+            document.getElementById('searchView').style.display = 'none';
             document.getElementById('feedView').style.display = 'block';
+        }
+
+        function openSearch() {
+            document.getElementById('profileView').style.display = 'none';
+            document.getElementById('feedView').style.display = 'none';
+            document.getElementById('searchView').style.display = 'block';
+            renderRelevantPosts();
         }
 
         window.onload = function() {
             if (typeof google !== 'undefined') {
                 google.accounts.id.initialize({
-                    client_id: "8393724573-kdnas52bjnhjvtkhahtqchm1p000b0i4.apps.googleusercontent.com",
+                    client_id: "8393724573-kdnas5bjnhjvtkhahtqchm1p000b0i4.apps.googleusercontent.com",
                     callback: handleCredentialResponse
                 });
                 google.accounts.id.renderButton(
@@ -118,189 +196,135 @@
 
     <style type="text/tailwindcss">
         @layer utilities {
-            .orkut-box {
-                border: 1px solid #ccc;
-                border-radius: 8px;
-                background: #fff;
-                box-shadow: 0 1px 2px rgba(0,0,0,0.1);
-            }
-            .orkut-button {
-                background: #ffcc00;
-                border: 1px solid #cc9900;
-                color: #4B0082;
+            .nav-logo-text {
+                font-family: "Trebuchet MS", sans-serif;
+                font-size: 22px;
                 font-weight: bold;
-                border-radius: 4px;
+                color: #9370DB;
+                letter-spacing: -0.5px;
             }
-            .orkut-button:hover {
-                background: #ffdd00;
+            .heart-animation {
+                transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             }
-            .orkut-menu-item {
-                border-right: 1px solid #fff;
-                border-left: 1px solid #ccc;
-                background: #e6e6fa;
-                padding: 2px 8px;
-                font-size: 12px;
+            .heart-active {
+                color: #ED4956 !important;
+                transform: scale(1.2);
             }
-            .tab-orkut {
-                background: #E6E6FA;
-                border: 1px solid #9370DB;
-                border-bottom: none;
-                padding: 3px 8px;
-                font-size: 12px;
-            }
-            .tab-orkut.active {
-                background: #fff;
+            .tab-active {
+                border-bottom: 2px solid #9370DB;
+                color: #9370DB;
                 font-weight: bold;
             }
-        }
-    </style>
-
-    <style>
-        body {
-            background-color: #F2F2F2;
-            font-family: "Trebuchet MS", Arial, sans-serif;
-            font-size: 14px;
-        }
-        .logo-text {
-            font-family: "Trebuchet MS", sans-serif;
-            font-size: 22px;
-            font-weight: bold;
-            color: #9370DB;
-            letter-spacing: -1px;
-        }
-        textarea, input {
-            border: 1px solid #aca8c4;
-            border-radius: 4px;
-            background: #fff;
         }
     </style>
 </head>
-<body class="text-black">
+<body class="bg-gray-100 text-gray-900 font-sans">
 
-    <!-- TELA DE LOGIN ESTILO ORKUT -->
+    <!-- TELA DE LOGIN -->
     <div id="loginScreen" class="fixed inset-0 z-[100] bg-white flex items-center justify-center">
         <div class="w-full max-w-md px-4">
-            
-            <div class="text-center mb-6">
-                <h1 class="logo-text text-5xl">orkut</h1>
-                <p class="text-gray-600 text-sm mt-2">Conecte-se às pessoas que fazem a sua vida.</p>
+            <div class="text-center mb-8">
+                <!-- LOGO ORIGINAL -->
+                <img src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Orkut_Logo_2.png" class="h-16 mx-auto mb-3" alt="Logo Orkut">
+                <p class="text-gray-500 mt-2">Conecte-se às pessoas que fazem a sua vida.</p>
             </div>
-
-            <div class="orkut-box p-6">
-                <div class="text-center mb-4">
-                    <p class="font-bold text-orkut-dark">Entre com sua conta Google</p>
-                </div>
-                <div id="buttonDiv" class="flex justify-center"></div>
-            </div>
-
+            <div id="buttonDiv" class="text-center"></div>
         </div>
     </div>
 
     <!-- CONTEÚDO PRINCIPAL -->
-    <div id="mainContent" class="hidden">
+    <div id="mainContent" class="hidden pb-16"> <!-- pb-16 para dar espaço na barra inferior -->
 
-        <!-- CABEÇALHO ROXO CLÁSSICO -->
-        <header class="bg-orkut-purple text-white border-b-2 border-orkut-dark">
-            <div class="max-w-6xl mx-auto px-4 flex items-center justify-between h-10">
-                <div class="flex items-center gap-2 cursor-pointer" onclick="backToFeed()">
-                    <span class="logo-text text-white text-xl">orkut</span>
-                </div>
-                <div class="flex space-x-1 text-xs">
-                    <a href="#" onclick="backToFeed()" class="orkut-menu-item">Início</a>
-                    <a href="#" onclick="openProfile()" class="orkut-menu-item">Perfil</a>
-                </div>
-            </div>
-        </header>
-
-        <main class="max-w-5xl mx-auto p-4 grid grid-cols-1 md:grid-cols-4 gap-4">
-            
-            <!-- BARRA LATERAL ESQUERDA -->
-            <div class="md:col-span-1">
-                <div class="orkut-box p-3 sticky top-4">
-                    <div class="text-center">
-                        <img id="profilePicture" src="" class="w-20 h-20 rounded-full mx-auto border-2 border-orkut-yellow" alt="Profile" onclick="openProfile()">
-                        <p id="profileName" class="font-bold text-orkut-dark mt-2 cursor-pointer" onclick="openProfile()"></p>
-                        <p id="profileEmail" class="text-xs text-gray-500"></p>
+        <nav class="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-50 shadow-sm">
+            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between items-center h-16">
+                    <div class="flex-shrink-0 flex items-center gap-2 cursor-pointer" onclick="backToFeed()">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Orkut_Logo_2.png" class="h-8 w-auto" alt="Logo Orkut">
+                    </div>
+                    <div class="flex items-center space-x-6">
+                        <i class="fa fa-home text-2xl cursor-pointer hover:text-orkut-purple transition-colors" title="Início" onclick="backToFeed()"></i>
+                        <i class="fa fa-user text-2xl cursor-pointer hover:text-orkut-purple transition-colors" title="Perfil" onclick="openProfile()"></i>
                     </div>
                 </div>
             </div>
+        </nav>
 
-            <!-- CONTEÚDO CENTRAL -->
-            <div class="md:col-span-2">
+        <main class="max-w-6xl mx-auto pt-20 pb-10 px-4 grid grid-cols-1 md:grid-cols-3 gap-6">
+            
+            <!-- COLUNA CENTRAL -->
+            <div class="col-span-2 space-y-6">
 
                 <!-- VISUALIZAÇÃO DO FEED -->
                 <div id="feedView">
                     
-                    <!-- CAIXA DE NOVO POST -->
-                    <div class="orkut-box p-3 mb-4">
-                        <div class="flex items-center gap-2 mb-2">
-                            <img id="profilePictureSmall" src="" class="w-8 h-8 rounded-full" alt="Me">
-                            <input type="text" placeholder="No que você está pensando?" class="flex-1 p-2 text-sm" onclick="togglePostBox()">
+                    <!-- CAIXA DE CRIAÇÃO DE POST -->
+                    <div class="bg-white border rounded-lg p-4 shadow-sm">
+                        <div class="flex items-center space-x-3 mb-4">
+                            <img id="profilePicture" src="https://picsum.photos/seed/me/100" class="w-10 h-10 rounded-full object-cover cursor-pointer" onclick="openProfile()" alt="Me">
+                            <input type="text" placeholder="No que você está pensando?" class="flex-1 bg-gray-100 border-none rounded-full px-4 py-2 focus:outline-none cursor-pointer" onclick="togglePostBox()">
                         </div>
-                        <div class="flex justify-end gap-2">
-                            <button class="orkut-button text-xs px-3 py-1" onclick="togglePostBox()">+ Adicionar foto</button>
-                            <button class="orkut-button text-xs px-3 py-1" onclick="publishPost()">Publicar</button>
+                        
+                        <div class="flex justify-around pt-3 border-t">
+                            <button class="flex items-center space-x-2 text-gray-600 hover:bg-gray-100 px-4 py-2 rounded w-full justify-center" onclick="togglePostBox()">
+                                <i class="fa fa-image text-green-500 text-xl"></i>
+                                <span class="text-sm font-medium">Foto/Vídeo</span>
+                            </button>
+                            <button class="flex items-center space-x-2 text-gray-600 hover:bg-gray-100 px-4 py-2 rounded w-full justify-center">
+                                <i class="fa fa-youtube-play text-red-500 text-xl"></i>
+                                <span class="text-sm font-medium">Vídeo</span>
+                            </button>
+                            <button class="flex items-center space-x-2 text-gray-600 hover:bg-gray-100 px-4 py-2 rounded w-full justify-center">
+                                <i class="fa fa-file-image-o text-purple-500 text-xl"></i>
+                                <span class="text-sm font-medium">GIF</span>
+                            </button>
                         </div>
                     </div>
 
                     <!-- CAIXA DE ESCREVER POST -->
-                    <div id="postBox" class="hidden orkut-box p-4 mb-4">
-                        <h3 class="font-bold text-orkut-dark mb-2">Criar novo recado</h3>
-                        <textarea id="postText" class="w-full p-2 h-20 text-sm mb-2" placeholder="Escreva aqui..."></textarea>
-                        <input id="postImageUrl" type="text" class="w-full p-2 text-sm mb-2" placeholder="URL da imagem/foto/GIF">
-                        <div class="text-right">
-                            <button class="bg-gray-200 border border-gray-400 px-3 py-1 text-xs rounded mr-1" onclick="togglePostBox()">Cancelar</button>
-                            <button class="orkut-button px-3 py-1 text-xs" onclick="publishPost()">Publicar</button>
+                    <div id="postBox" class="hidden bg-white border rounded-lg p-4 shadow-sm space-y-4">
+                        <h3 class="font-bold text-lg border-b pb-2">Criar publicação</h3>
+                        <textarea id="postText" placeholder="No que você está pensando?" class="w-full p-3 rounded bg-gray-50 focus:outline-none resize-none h-32"></textarea>
+                        
+                        <div class="space-y-2">
+                            <label class="text-sm font-semibold text-gray-600">URL da Imagem:</label>
+                            <input id="postImageUrl" type="text" placeholder="Cole o link da imagem aqui" class="w-full p-2 border rounded">
+                        </div>
+
+                        <div class="space-y-2">
+                            <label class="text-sm font-semibold text-gray-600">URL do Vídeo (YouTube):</label>
+                            <input id="postVideoUrl" type="text" placeholder="Cole o link do vídeo aqui" class="w-full p-2 border rounded">
+                        </div>
+
+                        <div class="flex justify-end pt-3 border-t">
+                            <button class="bg-gray-300 text-gray-700 px-4 py-2 rounded mr-2" onclick="togglePostBox()">Cancelar</button>
+                            <button class="bg-orkut-purple text-white px-6 py-2 rounded font-bold" onclick="publishPost()">Publicar</button>
                         </div>
                     </div>
 
-                    <!-- FEED -->
-                    <div id="feedContainer">
-                        <p class="text-center text-gray-500 text-sm py-4">Nenhuma novidade ainda. Seja o primeiro a postar!</p>
+                    <!-- FEED DE POSTS -->
+                    <div id="feedContainer" class="space-y-6 mt-4">
+                        <p class="text-center text-gray-500 py-10">Ainda não há publicações. Seja o primeiro a postar! ✨</p>
                     </div>
 
+                </div>
+
+                <!-- VISUALIZAÇÃO DE BUSCA / RELEVANTES -->
+                <div id="searchView" class="hidden">
+                    <div class="bg-white border rounded-lg p-4 shadow-sm mb-6">
+                        <h2 class="text-xl font-bold mb-4">Encontrar</h2>
+                        <div class="relative">
+                            <input type="text" id="searchInput" onkeyup="searchPosts()" placeholder="Pesquisar pessoas, posts, palavras..." class="w-full bg-gray-100 rounded-full px-5 py-3 pl-10 focus:outline-none">
+                            <i class="fa fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
+                        </div>
+                    </div>
+
+                    <h3 class="font-bold text-lg mb-3">Posts Relevantes</h3>
+                    <div id="relevantContainer">
+                        <!-- Os posts aparecem aqui -->
+                    </div>
                 </div>
 
                 <!-- VISUALIZAÇÃO DO PERFIL -->
                 <div id="profileView" class="hidden">
-                    
-                    <div class="orkut-box overflow-hidden">
-                        <div class="bg-orkut-light p-3 border-b">
-                            <h1 id="profileNameBig" class="text-xl font-bold text-orkut-dark"></h1>
-                        </div>
-                        <div class="p-4 flex gap-4">
-                            <img id="profileAvatarBig" src="" class="w-32 h-32 border-4 border-orkut-yellow rounded-lg" alt="Profile">
-                            <div class="flex-1">
-                                <p class="text-sm mb-1"><strong>E-mail:</strong> <span id="profileEmailBig" class="text-blue-700"></span></p>
-                                <p class="text-sm mb-1"><strong>Membro desde:</strong> ${new Date().getFullYear()}</p>
-                                <p class="text-sm mb-1"><strong>País:</strong> Brasil</p>
-                                <button class="orkut-button text-xs px-3 py-1 mt-2">Editar perfil</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <h3 class="font-bold text-orkut-dark mt-4 mb-2">Meus Recados</h3>
-                    <div id="myPosts" class="space-y-3">
-                        <!-- Seus posts aparecem aqui -->
-                    </div>
-
-                </div>
-
-            </div>
-
-            <!-- BARRA LATERAL DIREITA -->
-            <div class="md:col-span-1">
-                <div class="orkut-box p-3">
-                    <h3 class="font-bold text-orkut-dark text-sm border-b pb-1 mb-2">Comunidades</h3>
-                    <p class="text-xs text-gray-600">• HTML e CSS3</p>
-                    <p class="text-xs text-gray-600">• Nostalgia</p>
-                    <p class="text-xs text-gray-600">• Programadores BR</p>
-                </div>
-            </div>
-
-        </main>
-
-    </div>
-
-</body>
-</html>
+                    <div class="bg-white rounded-lg
+                        
