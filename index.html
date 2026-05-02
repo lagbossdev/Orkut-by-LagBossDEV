@@ -32,22 +32,48 @@
             }
         }
 
+        // --- BANCO DE DADOS SIMULADO ---
         let currentUser = {};
-        let allPosts = [];
+        let allPosts = JSON.parse(localStorage.getItem('allPosts') || '[]');
+        let allUsers = [
+            {id: 1, name: "Ana Carolina", picture: "https://picsum.photos/seed/ana/100", email: "ana@email.com"},
+            {id: 2, name: "Bruno Mendes", picture: "https://picsum.photos/seed/bruno/100", email: "bruno@email.com"},
+            {id: 3, name: "Carla Souza", picture: "https://picsum.photos/seed/carla/100", email: "carla@email.com"},
+            {id: 4, name: "Daniel Junior", picture: "https://picsum.photos/seed/daniel/100", email: "daniel@email.com"}
+        ];
+        let myFriends = [];
+        let following = [];
+        let pendingRequests = [];
 
+        // --- FUNÇÕES PRINCIPAIS ---
         function handleCredentialResponse(response) {
             const payload = JSON.parse(atob(response.credential.split('.')[1]));
             currentUser = payload;
             
+            // Adiciona o usuário atual na lista se não existir
+            if(!allUsers.find(u => u.email === currentUser.email)) {
+                allUsers.push({
+                    id: Date.now(),
+                    name: currentUser.name,
+                    picture: currentUser.picture,
+                    email: currentUser.email
+                });
+            }
+            
             document.getElementById('loginScreen').style.display = 'none';
             document.getElementById('mainContent').style.display = 'block';
             
-            document.getElementById('profileName').innerText = payload.name;
-            document.getElementById('profilePicture').src = payload.picture;
-            document.getElementById('profileEmail').innerText = payload.email;
-            document.getElementById('profilePictureSide').src = payload.picture;
+            updateUI();
+            renderAllPosts();
         }
 
+        function updateUI() {
+            document.getElementById('profileName').innerText = currentUser.name;
+            document.getElementById('profilePicture').src = currentUser.picture;
+            document.getElementById('profileEmail').innerText = currentUser.email;
+        }
+
+        // --- SISTEMA DE POSTAGEM ---
         function togglePostBox() {
             const box = document.getElementById('postBox');
             box.classList.toggle('hidden');
@@ -68,30 +94,42 @@
                 text: text,
                 image: imageUrl,
                 video: videoUrl,
-                user: currentUser
+                user: {
+                    name: currentUser.name,
+                    picture: currentUser.picture,
+                    email: currentUser.email
+                },
+                date: new Date().toISOString()
             };
 
             allPosts.unshift(postData);
+            localStorage.setItem('allPosts', JSON.stringify(allPosts));
+            
             renderPost(postData);
+            clearPostBox();
+        }
 
+        function clearPostBox() {
             document.getElementById('postText').value = '';
             document.getElementById('postImageUrl').value = '';
             document.getElementById('postVideoUrl').value = '';
             document.getElementById('postBox').classList.add('hidden');
-            renderRelevantPosts();
         }
 
         function renderPost(post) {
             const feed = document.getElementById('feedContainer');
+            const isOwner = post.user.email === currentUser.email;
+
             const postElement = document.createElement('article');
-            postElement.className = 'bg-white border rounded-lg shadow-sm post-item';
+            postElement.className = 'bg-white border rounded-lg shadow-sm post-item mb-4';
+            postElement.id = post.id;
             postElement.innerHTML = `
                 <div class="p-3 flex items-center justify-between">
                     <div class="flex items-center space-x-2">
                         <img src="${post.user.picture}" class="w-9 h-9 rounded-full object-cover" alt="User">
                         <span class="font-semibold text-sm">${post.user.name}</span>
                     </div>
-                    <i class="fa fa-ellipsis-h cursor-pointer"></i>
+                    ${isOwner ? `<i class="fa fa-ellipsis-h cursor-pointer text-gray-500" onclick="deletePost('${post.id}')"></i>` : '<div></div>'}
                 </div>
                 <div class="px-3 pb-3">
                     <p class="text-gray-800 whitespace-pre-wrap">${post.text}</p>
@@ -103,9 +141,7 @@
                         <div class="flex space-x-4">
                             <i class="fa fa-heart-o text-2xl cursor-pointer heart-btn heart-animation"></i>
                             <i class="fa fa-comment-o text-2xl cursor-pointer comment-btn"></i>
-                            <i class="fa fa-paper-plane-o text-2xl cursor-pointer"></i>
                         </div>
-                        <i class="fa fa-bookmark-o text-2xl cursor-pointer"></i>
                     </div>
                     <p class="text-gray-400 text-xs mt-2 uppercase">Agora mesmo</p>
                 </div>
@@ -113,15 +149,33 @@
             feed.insertBefore(postElement, feed.firstChild);
         }
 
+        function deletePost(postId) {
+            if(confirm('Tem certeza que deseja deletar este post?')) {
+                allPosts = allPosts.filter(p => p.id !== postId);
+                localStorage.setItem('allPosts', JSON.stringify(allPosts));
+                document.getElementById(postId).remove();
+            }
+        }
+
+        function renderAllPosts() {
+            const feed = document.getElementById('feedContainer');
+            feed.innerHTML = '';
+            if(allPosts.length === 0) {
+                feed.innerHTML = '<p class="text-center text-gray-500 py-10">Ainda não há publicações. Seja o primeiro a postar! ✨</p>';
+                return;
+            }
+            allPosts.forEach(post => renderPost(post));
+        }
+
+        // --- BUSCA ---
+        function openSearch() {
+            switchView('searchView');
+            renderRelevantPosts();
+        }
+
         function renderRelevantPosts() {
             const container = document.getElementById('relevantContainer');
             container.innerHTML = '';
-            
-            if(allPosts.length === 0) {
-                container.innerHTML = '<p class="text-center text-gray-500 py-6">Nenhuma publicação ainda.</p>';
-                return;
-            }
-
             allPosts.forEach(post => {
                 const div = document.createElement('div');
                 div.className = 'bg-white border rounded p-3 mb-3';
@@ -137,35 +191,114 @@
         function searchPosts() {
             const query = document.getElementById('searchInput').value.toLowerCase();
             const items = document.querySelectorAll('#relevantContainer > div');
-            
             items.forEach(item => {
-                const text = item.textContent.toLowerCase();
-                item.style.display = text.includes(query) ? 'block' : 'none';
+                item.style.display = item.textContent.toLowerCase().includes(query) ? 'block' : 'none';
             });
         }
 
+        // --- PERFIL ---
         function openProfile() {
-            document.getElementById('feedView').style.display = 'none';
-            document.getElementById('searchView').style.display = 'none';
-            document.getElementById('profileView').style.display = 'block';
-            
+            switchView('profileView');
             document.getElementById('profileBanner').src = currentUser.picture;
             document.getElementById('profileAvatar').src = currentUser.picture;
             document.getElementById('profileFullName').innerText = currentUser.name;
             document.getElementById('profileBio').innerText = `E-mail: ${currentUser.email}`;
         }
 
-        function backToFeed() {
-            document.getElementById('profileView').style.display = 'none';
-            document.getElementById('searchView').style.display = 'none';
-            document.getElementById('feedView').style.display = 'block';
+        // --- AMIGOS ---
+        function openFriends() {
+            switchView('friendsView');
+            renderFriendsList();
         }
 
-        function openSearch() {
-            document.getElementById('profileView').style.display = 'none';
+        function renderFriendsList() {
+            const list = document.getElementById('friendsList');
+            list.innerHTML = '';
+            if(myFriends.length === 0) {
+                list.innerHTML = '<p class="text-gray-500 text-sm">Você ainda não tem amigos.</p>';
+            } else {
+                myFriends.forEach(id => {
+                    const friend = allUsers.find(u => u.id === id);
+                    if(friend) {
+                        const div = document.createElement('div');
+                        div.className = 'flex items-center space-x-3 p-2 border-b';
+                        div.innerHTML = `
+                            <img src="${friend.picture}" class="w-10 h-10 rounded-full">
+                            <span class="flex-1 text-sm font-semibold">${friend.name}</span>
+                            <button class="text-xs bg-gray-200 px-2 py-1 rounded">Ver perfil</button>
+                        `;
+                        list.appendChild(div);
+                    }
+                });
+            }
+        }
+
+        function openExplore() {
+            switchView('exploreView');
+            renderAllUsers();
+        }
+
+        function renderAllUsers() {
+            const list = document.getElementById('usersList');
+            list.innerHTML = '';
+            
+            allUsers.forEach(user => {
+                if(user.email === currentUser.email) return; // Não mostra ele mesmo
+                
+                const isFriend = myFriends.includes(user.id);
+                const isFollowing = following.includes(user.id);
+
+                const div = document.createElement('div');
+                div.className = 'flex items-center space-x-3 p-3 border-b';
+                div.innerHTML = `
+                    <img src="${user.picture}" class="w-12 h-12 rounded-full">
+                    <div class="flex-1">
+                        <p class="font-semibold text-sm">${user.name}</p>
+                    </div>
+                    ${isFriend 
+                        ? `<button class="text-xs bg-green-100 text-green-800 px-2 py-1 rounded">Amigos</button>` 
+                        : `<button onclick="addFriend(${user.id})" class="text-xs bg-orkut-purple text-white px-2 py-1 rounded">Solicitar</button>`
+                    }
+                    <button onclick="toggleFollow(${user.id})" class="text-xs border border-orkut-purple text-orkut-dark px-2 py-1 rounded ml-1">
+                        ${isFollowing ? 'Seguindo' : 'Seguir'}
+                    </button>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function addFriend(userId) {
+            if(!myFriends.includes(userId) && !pendingRequests.includes(userId)) {
+                pendingRequests.push(userId);
+                alert('Solicitação enviada!');
+                // Simulação: para ficar mútuo, já adiciona como amigo
+                myFriends.push(userId);
+                renderAllUsers();
+                renderFriendsList();
+            }
+        }
+
+        function toggleFollow(userId) {
+            if(following.includes(userId)) {
+                following = following.filter(id => id !== userId);
+            } else {
+                following.push(userId);
+            }
+            renderAllUsers();
+        }
+
+        // --- NAVEGAÇÃO ---
+        function switchView(viewId) {
             document.getElementById('feedView').style.display = 'none';
-            document.getElementById('searchView').style.display = 'block';
-            renderRelevantPosts();
+            document.getElementById('searchView').style.display = 'none';
+            document.getElementById('profileView').style.display = 'none';
+            document.getElementById('friendsView').style.display = 'none';
+            document.getElementById('exploreView').style.display = 'none';
+            document.getElementById(viewId).style.display = 'block';
+        }
+
+        function backToFeed() {
+            switchView('feedView');
         }
 
         window.onload = function() {
@@ -177,7 +310,7 @@
                 google.accounts.id.renderButton(
                     document.getElementById("buttonDiv"),
                     { theme: "outline", size: "large", text: "sign_in_with", shape: "rectangular" }
-                );
+                });
             }
         }
 
@@ -199,11 +332,6 @@
                 color: #ED4956 !important;
                 transform: scale(1.2);
             }
-            .tab-active {
-                border-bottom: 2px solid #9370DB;
-                color: #9370DB;
-                font-weight: bold;
-            }
         }
     </style>
 </head>
@@ -223,107 +351,24 @@
     <!-- CONTEÚDO PRINCIPAL -->
     <div id="mainContent" class="hidden pb-20">
 
+        <!-- CABEÇALHO -->
         <nav class="fixed top-0 left-0 right-0 bg-white border-b border-gray-200 z-50 shadow-sm">
-            <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between items-center h-16">
+            <div class="max-w-6xl mx-auto px-4">
+                <div class="flex justify-between items-center h-14">
                     <div class="flex-shrink-0 flex items-center gap-2 cursor-pointer" onclick="backToFeed()">
-                        <img src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Orkut_Logo_2.png" class="h-8 w-auto" alt="Logo Orkut">
+                        <img src="https://upload.wikimedia.org/wikipedia/commons/6/6f/Orkut_Logo_2.png" class="h-7 w-auto" alt="Logo Orkut">
                     </div>
-                    <div class="flex items-center space-x-6">
-                        <i class="fa fa-home text-2xl cursor-pointer hover:text-orkut-purple transition-colors" title="Início" onclick="backToFeed()"></i>
-                        <i class="fa fa-user text-2xl cursor-pointer hover:text-orkut-purple transition-colors" title="Perfil" onclick="openProfile()"></i>
+                    <div class="flex items-center space-x-5">
+                        <i class="fa fa-home text-xl cursor-pointer hover:text-orkut-purple" title="Início" onclick="backToFeed()"></i>
+                        <i class="fa fa-users text-xl cursor-pointer hover:text-orkut-purple" title="Amigos" onclick="openFriends()"></i>
+                        <i class="fa fa-user text-xl cursor-pointer hover:text-orkut-purple" title="Perfil" onclick="openProfile()"></i>
                     </div>
                 </div>
             </div>
         </nav>
 
-        <main class="max-w-6xl mx-auto pt-20 pb-10 px-4 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <!-- CONTEÚDO -->
+        <main class="max-w-2xl mx-auto pt-16 px-3">
             
-            <div class="col-span-2 space-y-6">
-
-                <div id="feedView">
-                    
-                    <div class="bg-white border rounded-lg p-4 shadow-sm">
-                        <div class="flex items-center space-x-3 mb-4">
-                            <img id="profilePicture" src="" class="w-10 h-10 rounded-full object-cover cursor-pointer" onclick="openProfile()" alt="Me">
-                            <input type="text" placeholder="No que você está pensando?" class="flex-1 bg-gray-100 border-none rounded-full px-4 py-2 focus:outline-none cursor-pointer" onclick="togglePostBox()">
-                        </div>
-                        
-                        <div class="flex justify-around pt-3 border-t">
-                            <button class="flex items-center space-x-2 text-gray-600 hover:bg-gray-100 px-4 py-2 rounded w-full justify-center" onclick="togglePostBox()">
-                                <i class="fa fa-image text-green-500 text-xl"></i>
-                                <span class="text-sm font-medium">Foto/Vídeo</span>
-                            </button>
-                            <button class="flex items-center space-x-2 text-gray-600 hover:bg-gray-100 px-4 py-2 rounded w-full justify-center">
-                                <i class="fa fa-youtube-play text-red-500 text-xl"></i>
-                                <span class="text-sm font-medium">Vídeo</span>
-                            </button>
-                            <button class="flex items-center space-x-2 text-gray-600 hover:bg-gray-100 px-4 py-2 rounded w-full justify-center">
-                                <i class="fa fa-file-image-o text-purple-500 text-xl"></i>
-                                <span class="text-sm font-medium">GIF</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div id="postBox" class="hidden bg-white border rounded-lg p-4 shadow-sm space-y-4">
-                        <h3 class="font-bold text-lg border-b pb-2">Criar publicação</h3>
-                        <textarea id="postText" placeholder="No que você está pensando?" class="w-full p-3 rounded bg-gray-50 focus:outline-none resize-none h-32"></textarea>
-                        
-                        <div class="space-y-2">
-                            <label class="text-sm font-semibold text-gray-600">URL da Imagem:</label>
-                            <input id="postImageUrl" type="text" placeholder="Cole o link da imagem aqui" class="w-full p-2 border rounded">
-                        </div>
-
-                        <div class="space-y-2">
-                            <label class="text-sm font-semibold text-gray-600">URL do Vídeo:</label>
-                            <input id="postVideoUrl" type="text" placeholder="Cole o link do vídeo aqui" class="w-full p-2 border rounded">
-                        </div>
-
-                        <div class="flex justify-end pt-3 border-t">
-                            <button class="bg-gray-300 text-gray-700 px-4 py-2 rounded mr-2" onclick="togglePostBox()">Cancelar</button>
-                            <button class="bg-orkut-purple text-white px-6 py-2 rounded font-bold" onclick="publishPost()">Publicar</button>
-                        </div>
-                    </div>
-
-                    <div id="feedContainer" class="space-y-6 mt-4">
-                        <p class="text-center text-gray-500 py-10">Ainda não há publicações. Seja o primeiro a postar! ✨</p>
-                    </div>
-
-                </div>
-
-                <div id="searchView" class="hidden">
-                    <div class="bg-white border rounded-lg p-4 shadow-sm mb-6">
-                        <h2 class="text-xl font-bold mb-4">Encontrar</h2>
-                        <div class="relative">
-                            <input type="text" id="searchInput" onkeyup="searchPosts()" placeholder="Pesquisar pessoas, posts, palavras..." class="w-full bg-gray-100 rounded-full px-5 py-3 pl-10 focus:outline-none">
-                            <i class="fa fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"></i>
-                        </div>
-                    </div>
-                    <h3 class="font-bold text-lg mb-3">Posts Relevantes</h3>
-                    <div id="relevantContainer"></div>
-                </div>
-
-                <div id="profileView" class="hidden">
-                    <div class="bg-white rounded-lg shadow-sm overflow-hidden">
-                        <div class="h-48 bg-gradient-to-r from-orkut-purple to-orkut-dark relative">
-                            <img id="profileBanner" src="" class="w-full h-full object-cover opacity-50" alt="Banner">
-                        </div>
-                        <div class="px-6 pb-4 relative">
-                            <div class="flex items-end justify-between -mt-12 mb-4">
-                                <img id="profileAvatar" src="" class="w-32 h-32 rounded-full border-4 border-white object-cover" alt="Profile">
-                                <button class="bg-gray-100 hover:bg-gray-200 px-4 py-1 rounded-full text-sm font-bold">Editar perfil</button>
-                            </div>
-                            <h1 id="profileFullName" class="text-2xl font-bold"></h1>
-                            <p id="profileBio" class="text-gray-600 mt-1"></p>
-                        </div>
-                    </div>
-                    <h3 class="font-bold text-lg mt-6 mb-3">Minhas Publicações</h3>
-                    <div id="myPosts" class="space-y-4"></div>
-                </div>
-
-            </div>
-
-            <div class="hidden md:block pt-4">
-                <div class="fixed w-80">
-                    <div class="bg-white p-4 rounded-lg shadow-sm border">
-                        
+            <!-- FEED -->
+            <div
